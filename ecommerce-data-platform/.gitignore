@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# dbt
+dbt_models/target/
+dbt_models/dbt_packages/
+dbt_models/logs/
+
+# Environment
+.env
+*.env.local
+
+# Spark
+spark-warehouse/
+derby.log
+metastore_db/
+
+# Airflow
+airflow/logs/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (local dev)
+data/
+
+# Logs
+*.log
+logs/

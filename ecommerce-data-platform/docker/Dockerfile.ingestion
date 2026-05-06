@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev curl && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    confluent-kafka==2.4.0 \
+    faker==25.2.0 \
+    pydantic==2.7.1 \
+    python-dotenv==1.0.1 \
+    tenacity==8.3.0
+
+COPY configs/ ./configs/
+COPY ingestion/ ./ingestion/
+
+ENV PYTHONPATH=/app
+CMD ["python", "-m", "ingestion.kafka_producer"]

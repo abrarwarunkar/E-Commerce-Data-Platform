@@ -1,0 +1,37 @@
+name: ecommerce_dbt
+version: "1.0.0"
+config-version: 2
+
+profile: ecommerce
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  ecommerce_dbt:
+    staging:
+      +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: marts
+      customer_analytics:
+        +materialized: incremental
+        +unique_key: user_id
+      product_performance:
+        +materialized: incremental
+        +unique_key: product_id
+      sales_trends:
+        +materialized: incremental
+        +unique_key: period
+
+vars:
+  start_date: "2024-01-01"
+  lookback_days: 90

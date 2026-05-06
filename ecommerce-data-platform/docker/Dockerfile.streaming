@@ -1,0 +1,26 @@
+FROM apache/spark:3.5.3
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && \
+    pip3 install --no-cache-dir \
+    pydantic==2.7.1 \
+    python-dotenv==1.0.1 \
+    tenacity==8.3.0 \
+    pyarrow==16.0.0 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY configs/ ./configs/
+COPY streaming/ ./streaming/
+COPY batch/ ./batch/
+COPY ingestion/schemas.py ./ingestion/schemas.py
+COPY ingestion/__init__.py ./ingestion/__init__.py
+
+ENV PYTHONPATH=/app
+
+CMD ["spark-submit", \
+     "--master", "local[*]", \
+     "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262", \
+     "streaming/spark_streaming.py"]

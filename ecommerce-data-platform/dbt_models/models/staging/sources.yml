@@ -1,0 +1,53 @@
+version: 2
+
+sources:
+  - name: ecommerce
+    database: ecommerce_dw
+    schema: public
+    description: "E-Commerce data warehouse — star schema source tables"
+    tables:
+      - name: fact_orders
+        description: "Central fact table — one row per order line item"
+        columns:
+          - name: order_id
+            tests: [not_null, unique]
+          - name: user_sk
+            tests: [not_null]
+          - name: product_sk
+            tests: [not_null]
+          - name: total_amount
+            tests:
+              - not_null
+              - dbt_utils.accepted_range:
+                  min_value: 0
+
+      - name: fact_events
+        description: "Clickstream events fact table"
+        columns:
+          - name: event_id
+            tests: [not_null, unique]
+
+      - name: dim_users
+        description: "User dimension — SCD Type 1"
+        columns:
+          - name: user_id
+            tests: [not_null, unique]
+          - name: email
+            tests: [not_null]
+
+      - name: dim_products
+        description: "Product dimension"
+        columns:
+          - name: product_id
+            tests: [not_null, unique]
+          - name: price
+            tests:
+              - not_null
+              - dbt_utils.accepted_range:
+                  min_value: 0
+
+      - name: dim_date
+        description: "Date dimension — populated for full year"
+        columns:
+          - name: date_sk
+            tests: [not_null, unique]
