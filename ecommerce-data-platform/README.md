@@ -1,348 +1,334 @@
-# 🛒 E-Commerce Data Platform
+# E-Commerce Data Platform
 
-A **production-ready, end-to-end data engineering platform** that ingests, streams, processes, transforms, and serves e-commerce data using modern data engineering practices.
+A production-ready, end-to-end data engineering platform that ingests, processes, transforms, and serves e-commerce data using modern data engineering practices. The platform implements a medallion architecture (Bronze/Silver/Gold) with real-time streaming and batch processing capabilities.
 
----
+## Overview
 
-## 🏗️ Architecture
+This platform demonstrates a complete data pipeline for e-commerce analytics:
+
+- **Real-time Data Ingestion**: Continuous event streaming from multiple Kafka topics
+- **Medallion Architecture**: Bronze (raw) → Silver (cleaned) → Gold (aggregated) data layers
+- **Data Warehouse**: PostgreSQL star schema for analytical queries
+- **Business Transformations**: dbt models for customer analytics, product performance, and sales trends
+- **REST API**: FastAPI serving layer for data access
+- **Analytics Dashboard**: Streamlit visualization with Plotly charts
+
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                      E-COMMERCE DATA PLATFORM                            │
-│                                                                          │
-│  ┌─────────────────┐   ┌─────────────────┐   ┌───────────────────────┐  │
-│  │  Data Generator │──▶│  Kafka Broker   │──▶│  Spark Structured     │  │
-│  │  (Python/Faker) │   │  (4 topics)     │   │  Streaming            │  │
-│  └─────────────────┘   └─────────────────┘   └──────────┬────────────┘  │
-│                                                          │               │
-│                                              ┌───────────▼────────────┐  │
-│                                              │  MinIO  (Data Lake)    │  │
-│                                              │  ┌────────────────┐    │  │
-│                                              │  │ 🥉 Bronze Layer│    │  │
-│                                              │  │ 🥈 Silver Layer│    │  │
-│                                              │  │ 🥇 Gold Layer  │    │  │
-│                                              │  └────────────────┘    │  │
-│                                              └───────────┬────────────┘  │
-│                                                          │               │
-│  ┌─────────────────┐   ┌─────────────────┐   ┌──────────▼────────────┐  │
-│  │ Apache Airflow  │──▶│  Spark Batch    │──▶│   PostgreSQL DWH      │  │
-│  │ (Orchestrator)  │   │  (PySpark Jobs) │   │   (Star Schema)       │  │
-│  └─────────────────┘   └─────────────────┘   └──────────┬────────────┘  │
-│                                                          │               │
-│                                              ┌───────────▼────────────┐  │
-│                                              │  dbt (Transformations) │  │
-│                                              │  ┌─────────────────┐   │  │
-│                                              │  │ staging/        │   │  │
-│                                              │  │ marts/          │   │  │
-│                                              │  └─────────────────┘   │  │
-│                                              └───────────┬────────────┘  │
-│                              ┌───────────────────────────┤               │
-│                              │                           │               │
-│              ┌───────────────▼───┐           ┌───────────▼────────────┐  │
-│              │  FastAPI (REST)   │           │  Streamlit Dashboard   │  │
-│              │  /api/v1/...      │           │  (Charts & KPIs)       │  │
-│              └───────────────────┘           └────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           E-COMMERCE DATA PLATFORM                                 │
+│                                                                                 │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌───────────────────────┐  │
+│  │ Data Generator   │───▶│  Kafka Broker    │───▶│  Spark Structured     │  │
+│  │ (Python/Faker)  │    │  (4 topics)       │    │  Streaming            │  │
+│  └──────────────────┘    └──────────────────┘    └───────────┬───────────┘  │
+│                                                               │               │
+│                                                   ┌───────────▼────────────┐  │
+│                                                   │  MinIO (Data Lake)    │  │
+│                                                   │  ┌────────────────┐  │  │
+│                                                   │  │ Bronze Layer  │  │  │
+│                                                   │  │ Silver Layer  │  │  │
+│                                                   │  │ Gold Layer   │  │  │
+│                                                   │  └────────────────┘  │  │
+│                                                   └───────────┬───────────┘  │
+│                                                               │               │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────▼────────────┐  │
+│  │ Apache Airflow  │───▶│  Spark Batch     │───▶│   PostgreSQL DWH    │  │
+│  │ (Orchestrator) │    │  (PySpark Jobs)  │    │   (Star Schema)      │  │
+│  └──────────────────┘    └──────────────────┘    └───────────┬───────────┘  │
+│                                                               │               │
+│                                                   ┌───────────▼────────────┐  │
+│                                                   │  dbt (Transformations)│  │
+│                                                   │  ┌─────────────────┐  │  │
+│                                                   │  │ staging/       │  │  │
+│                                                   │  │ marts/         │  │  │
+│                                                   │  └─────────────────┘  │  │
+│                                                   └───────────┬───────────┘  │
+│                                   ┌───────────────────────────┤               │
+│                                   │                           │               │
+│               ┌───────────────────▼────┐        ┌────────────▼────────────┐  │
+│               │  FastAPI (REST)        │        │  Streamlit Dashboard   │  │
+│               │  /api/v1/...           │        │  (Charts & KPIs)      │  │
+│               └─────────────────────────┘        └───────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## Tech Stack
 
-## 📊 Data Model
+| Layer | Technology | Version |
+|-------|------------|---------|
+| Language | Python | 3.11 |
+| Streaming | Apache Kafka (Confluent) | 7.6.1 |
+| Stream Processing | Apache Spark | 3.5.1 |
+| Batch Processing | PySpark | 3.5.1 |
+| Orchestration | Apache Airflow | 2.9.1 |
+| Data Lake | MinIO (S3-compatible) | 2024-05-01 |
+| Data Warehouse | PostgreSQL | 16 |
+| Transformation | dbt-core | 1.8.2 |
+| API | FastAPI | 0.111.0 |
+| Dashboard | Streamlit | 1.35.0 |
+| Visualization | Plotly | 5.22.0 |
+| Containerization | Docker + Compose | 2.20+ |
 
-### Source Tables
-| Entity | Key Columns | Layer |
-|--------|-------------|-------|
-| `users` | user_id, name, email, location, created_at | Dim |
-| `products` | product_id, name, category, price | Dim |
-| `orders` | order_id, user_id, product_id, quantity, total_amount, status | Fact |
-| `events` | event_id, user_id, event_type, product_id, session_id, timestamp | Fact |
+## Data Model
+
+### Source Entities
+
+| Entity | Description | Key Columns |
+|--------|------------|------------|
+| Users | Customer dimension | user_id, name, email, location, created_at |
+| Products | Product catalog | product_id, name, category, price, stock_quantity |
+| Orders | Transaction records | order_id, user_id, product_id, quantity, total_amount, status |
+| Events | User activity log | event_id, user_id, event_type, product_id, session_id, timestamp |
+
+### Event Types
+
+Weighted distribution for realistic traffic simulation:
+- PAGE_VIEW: 35%
+- PRODUCT_VIEW: 25%
+- SEARCH: 15%
+- ADD_TO_CART: 10%
+- CHECKOUT_START: 5%
+- WISHLIST_ADD: 5%
+- PURCHASE: 3%
+- REMOVE_FROM_CART: 2%
+
+### Product Categories
+
+Electronics, Clothing, Home & Garden, Sports, Books, Beauty, Toys, Food, Automotive, Jewelry
 
 ### Star Schema (PostgreSQL DWH)
+
 ```
-                 ┌──────────────┐
-                 │   dim_date   │
-                 └──────┬───────┘
-                        │
-    ┌───────────┐   ┌───▼──────────┐   ┌────────────────┐
-    │ dim_users │──▶│  fact_orders │◀──│  dim_products  │
-    └───────────┘   └──────────────┘   └────────────────┘
-         │
-         └──────────────▶ fact_events
+                  ┌──────────────┐
+                  │   dim_date   │
+                  └──────┬───────┘
+                         │
+     ┌───────────┐   ┌───▼──────────┐   ┌────────────────┐
+     │ dim_users │──▶│  fact_orders │◀──│  dim_products  │
+     └───────────┘   └──────────────┘   └────────────────┘
+          │
+          └──────────────▶ fact_events
 ```
 
 ### dbt Mart Models
+
 | Model | Description |
 |-------|-------------|
-| `customer_analytics` | RFM segmentation, churn risk, lifetime value |
-| `product_performance` | Revenue rank, return rate, unique buyers |
-| `sales_trends` | DoD, WoW, MoM growth metrics |
+| customer_analytics | RFM segmentation, churn risk, lifetime value |
+| product_performance | Revenue rank, return rate, unique buyers |
+| sales_trends | Day-over-day, Week-over-week, Month-over-month growth metrics |
 
----
-
-## 🔄 Data Flow
+## Data Flow
 
 ```
-1. DATA GENERATION
-   ingestion/data_generator.py
-   → Simulates 10 events/sec (page_views, purchases, orders)
-   → Weighted distribution: page_view (35%), purchase (3%), etc.
+1. DATA GENERATION (ingestion/data_generator.py)
+   - Simulates 10 events/sec with weighted distributions
+   - Maintains user/product pools for referential integrity
 
-2. KAFKA INGESTION
-   ingestion/kafka_producer.py
-   → Topics: user-events, orders, products, users
-   → Idempotent delivery, snappy compression
+2. KAFKA INGESTION (ingestion/kafka_producer.py)
+   - Topics: user-events, orders, products, users
+   - Idempotent delivery with snappy compression
 
-3. SPARK STREAMING (Bronze)
-   streaming/spark_streaming.py
-   → Consumes all Kafka topics concurrently
-   → Validates with stream_validator.py
-   → Writes Parquet partitioned by year/month/day/hour to MinIO
+3. SPARK STREAMING - BRONZE LAYER (streaming/spark_streaming.py)
+   - Multi-topic Kafka consumer
+   - Validates data with stream_validator.py
+   - Writes Parquet partitioned by year/month/day/hour
 
-4. BATCH PROCESSING (Silver)
-   batch/silver_processor.py
-   → Runs daily at 3AM UTC via Airflow
-   → Deduplicates, casts types, normalizes values
-   → Writes cleaned Parquet to MinIO silver/
+4. BATCH PROCESSING - SILVER LAYER (batch/silver_processor.py)
+   - Deduplication, type casting, value normalization
+   - Runs daily via Airflow DAG
 
-5. AGGREGATION (Gold)
-   batch/gold_aggregator.py
-   → daily_revenue, top_products, user_activity, sales_trends
-   → Writes to MinIO gold/
+5. AGGREGATION - GOLD LAYER (batch/gold_aggregator.py)
+   - Daily revenue, top products, user activity
+   - Business-level aggregations
 
-6. WAREHOUSE LOAD
-   warehouse/postgres_loader.py
-   → Upserts into dim_users, dim_products
-   → Inserts into fact_orders, fact_events
-   → Populates dim_date dimension
+6. WAREHOUSE LOAD (warehouse/postgres_loader.py)
+   - Upserts to dimension tables
+   - Inserts to fact tables with surrogate key resolution
 
-7. DBT TRANSFORMS
-   dbt_models/models/
-   → staging/ views over warehouse tables
-   → marts/ incremental tables with business metrics
+7. DBT TRANSFORMATIONS
+   - staging/: Views over warehouse tables
+   - marts/: Incremental business intelligence models
 
-8. SERVING
-   api/main.py → FastAPI REST endpoints
-   dashboard/app.py → Streamlit visualization
+8. SERVING LAYER
+   - api/main.py: FastAPI REST endpoints
+   - dashboard/app.py: Streamlit visualizations
 ```
 
----
-
-## ⚙️ Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Language | Python 3.11 |
-| Streaming | Apache Kafka (Confluent) + Spark Structured Streaming |
-| Batch Processing | Apache Spark 3.5 (PySpark) |
-| Orchestration | Apache Airflow 2.9 |
-| Data Lake | MinIO (S3-compatible) |
-| Data Warehouse | PostgreSQL 16 |
-| Transformation | dbt-core 1.8 |
-| API | FastAPI + asyncpg |
-| Dashboard | Streamlit + Plotly |
-| Containerization | Docker + Docker Compose |
-| Testing | pytest + pytest-asyncio |
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- Docker Desktop ≥ 24.0
-- Docker Compose ≥ 2.20
+
+- Docker Desktop >= 24.0
+- Docker Compose >= 2.20
 - 8GB RAM minimum (16GB recommended)
 
-### 1. Clone and Configure
+### Setup
 
+1. Clone the repository:
 ```bash
-git clone <your-repo>
+git clone <repository-url>
 cd ecommerce-data-platform
-
-# Copy environment file
-cp .env.example .env
-# Edit .env if needed (defaults work out of the box)
 ```
 
-### 2. Start All Services
+2. Copy environment configuration:
+```bash
+cp .env.example .env
+```
 
+3. Start all services:
 ```bash
 docker-compose up -d
 ```
 
-This starts 13 services. Watch them come up:
-
+This starts 13 services. Verify with:
 ```bash
 docker-compose ps
-docker-compose logs -f ingestion
 ```
 
-### 3. Verify Services Are Running
+### Service Endpoints
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Kafka UI** | http://localhost:8080 | — |
-| **MinIO Console** | http://localhost:9001 | minioadmin / minioadmin |
-| **Spark Master** | http://localhost:8082 | — |
-| **Airflow** | http://localhost:8083 | admin / admin |
-| **FastAPI Docs** | http://localhost:8000/docs | — |
-| **Dashboard** | http://localhost:8501 | — |
-| **PostgreSQL** | localhost:5432 | ecommerce / ecommerce_secret |
+| Kafka UI | http://localhost:8080 | - |
+| MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
+| Spark Master | http://localhost:8082 | - |
+| Airflow | http://localhost:8083 | admin / admin |
+| FastAPI Docs | http://localhost:8000/docs | - |
+| Dashboard | http://localhost:8501 | - |
+| PostgreSQL | localhost:5432 | ecommerce / ecommerce_secret |
 
-### 4. Trigger the Batch Pipeline Manually
+### Trigger Pipeline
 
+1. Run batch processing:
 ```bash
-# Run silver processing for today
-docker-compose exec airflow-webserver \
-  airflow dags trigger ecommerce_batch_pipeline
-
-# Or run directly
 docker-compose exec streaming python -m batch.silver_processor
 docker-compose exec streaming python -m batch.gold_aggregator
 ```
 
-### 5. Run dbt Transformations
-
+2. Run dbt transformations:
 ```bash
 docker-compose exec airflow-webserver bash -c "
   cd /opt/airflow/dbt_models && \
   dbt deps --profiles-dir . && \
-  dbt run --profiles-dir . && \
-  dbt test --profiles-dir .
+  dbt run --profiles-dir .
 "
 ```
 
-### 6. Run Tests
+### Run Tests
 
 ```bash
-# Install test deps locally
+# Install dependencies
 pip install -r requirements.txt
 
-# Run all unit tests
+# Run unit tests
 pytest tests/unit/ -v
 
-# With coverage report
+# With coverage
 pytest tests/ --cov=. --cov-report=html
 ```
 
----
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 ecommerce-data-platform/
-│
-├── ingestion/                 # Data generation + Kafka producer
-│   ├── schemas.py             # Pydantic entity schemas (User, Product, Order, Event)
-│   ├── data_generator.py      # Fake data generator (weighted distributions)
-│   └── kafka_producer.py      # Idempotent Kafka producer with retries
-│
-├── streaming/                 # Spark Structured Streaming
-│   ├── spark_streaming.py     # Multi-topic Kafka consumer → bronze layer
-│   └── stream_validator.py    # Data validation rules per entity
-│
-├── batch/                     # PySpark batch jobs
-│   ├── spark_session.py       # Singleton SparkSession factory (S3A + Kafka)
-│   ├── silver_processor.py    # Bronze → Silver (dedup, clean, type cast)
-│   └── gold_aggregator.py     # Silver → Gold (business metrics)
-│
-├── warehouse/                 # PostgreSQL data warehouse
-│   ├── models.py              # SQLAlchemy star schema models
-│   └── postgres_loader.py     # Upsert loader with surrogate key resolution
-│
-├── dbt_models/                # dbt transformation layer
+├── ingestion/                    # Data generation + Kafka producer
+│   ├── schemas.py               # Pydantic entity schemas
+│   ├── data_generator.py        # Synthetic data generator
+│   └── kafka_producer.py        # Kafka producer with retries
+├── streaming/                   # Spark Structured Streaming
+│   ├── spark_streaming.py       # Multi-topic consumer → bronze
+│   └── stream_validator.py      # Data validation rules
+├── batch/                       # PySpark batch jobs
+│   ├── spark_session.py         # SparkSession factory
+│   ├── silver_processor.py     # Bronze → Silver
+│   └── gold_aggregator.py      # Silver → Gold
+├── warehouse/                  # PostgreSQL data warehouse
+│   ├── models.py               # SQLAlchemy models
+│   └── postgres_loader.py     # Upsert loader
+├── dbt_models/                 # dbt transformation layer
 │   ├── dbt_project.yml
 │   ├── profiles.yml
 │   └── models/
-│       ├── staging/           # Views over raw warehouse tables
-│       └── marts/             # Incremental business intelligence models
-│
-├── api/                       # FastAPI REST serving layer
-│   ├── main.py                # App entrypoint with lifespan + middleware
-│   ├── dependencies.py        # Async DB pool + dependency injection
-│   ├── models.py              # Pydantic response schemas
+│       ├── staging/             # Views
+│       └── marts/             # Business models
+├── api/                        # FastAPI REST layer
+│   ├── main.py               # App entrypoint
+│   ├── dependencies.py      # DB pool management
+│   ├── models.py           # Response schemas
 │   └── routers/
-│       ├── products.py        # /api/v1/products/top, /categories
-│       ├── users.py           # /api/v1/users/activity, /{user_id}
-│       └── metrics.py         # /api/v1/metrics/summary, /revenue/*, /categories
-│
-├── dashboard/                 # Streamlit analytics dashboard
-│   └── app.py                 # Revenue trends, top products, user activity
-│
+│       ├── products.py      # Product endpoints
+│       ├── users.py        # User endpoints
+│       └── metrics.py      # Metrics endpoints
+├── dashboard/                 # Streamlit dashboard
+│   └── app.py              # Analytics visualizations
 ├── airflow/
 │   └── dags/
-│       ├── batch_pipeline_dag.py   # Daily: silver → gold → warehouse
-│       └── dbt_transform_dag.py    # Daily: dbt staging + marts + tests
-│
-├── docker/                    # Dockerfiles per service
+│       ├── batch_pipeline_dag.py    # Daily ETL
+│       └── dbt_transform_dag.py    # dbt runs
+├── docker/
 │   ├── Dockerfile.ingestion
 │   ├── Dockerfile.streaming
 │   ├── Dockerfile.api
 │   ├── Dockerfile.dashboard
-│   └── init-postgres.sh       # Multi-DB PostgreSQL init
-│
-├── configs/                   # Centralized configuration
-│   ├── kafka_config.py        # Kafka broker, topics, producer/consumer settings
-│   ├── spark_config.py        # SparkSession, S3A, streaming settings
-│   └── logging_config.py      # Rotating file + colored console logger
-│
+│   └── init-postgres.sh
+├── configs/
+│   ├── kafka_config.py
+│   ├── spark_config.py
+│   └── logging_config.py
 ├── tests/
 │   └── unit/
-│       ├── test_data_generator.py  # Schema + generator tests
-│       ├── test_api.py             # FastAPI endpoint tests (mocked DB)
-│       └── test_validators.py      # PySpark validation tests
-│
-├── .env.example               # Environment variables template
-├── docker-compose.yml         # Full stack compose (13 services)
-├── requirements.txt           # All Python dependencies
-└── pytest.ini                 # Test configuration
+│       ├── test_data_generator.py
+│       ├── test_api.py
+│       └── test_validators.py
+├── .env.example
+├── docker-compose.yml
+├── requirements.txt
+└── pytest.ini
 ```
 
----
+## API Endpoints
 
-## 🔧 Production-Ready Features
+### Products
+
+- `GET /api/v1/products/top` - Top products by revenue
+- `GET /api/v1/products/categories` - Product categories with revenue
+
+### Users
+
+- `GET /api/v1/users/{user_id}` - User details
+- `GET /api/v1/users/activity` - User activity metrics
+
+### Metrics
+
+- `GET /api/v1/metrics/summary` - Overall summary KPIs
+- `GET /api/v1/metrics/revenue/trends` - Revenue time series
+- `GET /api/v1/metrics/categories` - Category breakdown
+
+## Production Features
 
 | Feature | Implementation |
-|---------|---------------|
-| **Logging** | `configs/logging_config.py` — rotating file + colored console |
-| **Retries** | `tenacity` with exponential backoff (Kafka, PostgreSQL) |
-| **Data Validation** | `streaming/stream_validator.py` + Pydantic schema validation |
-| **Schema Enforcement** | Spark StructType + Pydantic field validators |
-| **Environment Config** | `.env.example` + `os.getenv()` throughout |
-| **Idempotency** | Kafka idempotent producer + PostgreSQL `ON CONFLICT DO NOTHING/UPDATE` |
-| **Incremental Processing** | Date-partitioned bronze/silver/gold + dbt incremental models |
-| **Late Data Handling** | Watermarking in Spark Streaming + order_time offset simulation |
-| **Partitioning** | Parquet partitioned by year/month/day/hour |
-| **Query Optimization** | Adaptive query execution, partition pruning, indexed keys |
+|---------|----------------|
+| Logging | Rotating file + colored console |
+| Retries | Exponential backoff (tenacity) |
+| Data Validation | Spark + Pydantic schemas |
+| Idempotency | Kafka idempotent producer, PostgreSQL upserts |
+| Incremental Processing | Date-partitioned layers, dbt incremental models |
+| Schema Enforcement | Spark StructType, Pydantic validators |
+| Environment Config | .env files throughout |
 
----
-
-## 🧪 Testing Strategy
+## Stopping the Platform
 
 ```bash
-pytest tests/unit/test_data_generator.py  # 15 tests — schema + generator
-pytest tests/unit/test_api.py             # 12 tests — FastAPI endpoints
-pytest tests/unit/test_validators.py      # 10 tests — PySpark validation
-```
-
----
-
-## 📈 Kafka Topics
-
-| Topic | Producer | Consumer | Partitions |
-|-------|----------|----------|-----------|
-| `user-events` | ingestion | spark-streaming | 3 |
-| `orders` | ingestion | spark-streaming | 3 |
-| `products` | ingestion | spark-streaming | 3 |
-| `users` | ingestion | spark-streaming | 3 |
-
----
-
-## 🛑 Stopping the Platform
-
-```bash
-# Stop all services
+# Stop services
 docker-compose down
 
-# Stop and remove volumes (full reset)
+# Full cleanup (removes volumes)
 docker-compose down -v
 ```
+
+## License
+
+MIT
