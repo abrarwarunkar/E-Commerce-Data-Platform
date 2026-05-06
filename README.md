@@ -16,42 +16,62 @@ This platform demonstrates a complete data pipeline for e-commerce analytics:
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                           E-COMMERCE DATA PLATFORM                                 │
-│                                                                                 │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌───────────────────────┐  │
-│  │ Data Generator   │───▶│  Kafka Broker    │───▶│  Spark Structured     │  │
-│  │ (Python/Faker)  │    │  (4 topics)       │    │  Streaming            │  │
-│  └──────────────────┘    └──────────────────┘    └───────────┬───────────┘  │
-│                                                               │               │
-│                                                   ┌───────────▼────────────┐  │
-│                                                   │  MinIO (Data Lake)    │  │
-│                                                   │  ┌────────────────┐  │  │
-│                                                   │  │ Bronze Layer  │  │  │
-│                                                   │  │ Silver Layer  │  │  │
-│                                                   │  │ Gold Layer   │  │  │
-│                                                   │  └────────────────┘  │  │
-│                                                   └───────────┬───────────┘  │
-│                                                               │               │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────▼────────────┐  │
-│  │ Apache Airflow  │───▶│  Spark Batch     │───▶│   PostgreSQL DWH    │  │
-│  │ (Orchestrator) │    │  (PySpark Jobs)  │    │   (Star Schema)      │  │
-│  └──────────────────┘    └──────────────────┘    └───────────┬───────────┘  │
-│                                                               │               │
-│                                                   ┌───────────▼────────────┐  │
-│                                                   │  dbt (Transformations)│  │
-│                                                   │  ┌─────────────────┐  │  │
-│                                                   │  │ staging/       │  │  │
-│                                                   │  │ marts/         │  │  │
-│                                                   │  └─────────────────┘  │  │
-│                                                   └───────────┬───────────┘  │
-│                                   ┌───────────────────────────┤               │
-│                                   │                           │               │
-│               ┌───────────────────▼────┐        ┌────────────▼────────────┐  │
-│               │  FastAPI (REST)        │        │  Streamlit Dashboard   │  │
-│               │  /api/v1/...           │        │  (Charts & KPIs)      │  │
-│               └─────────────────────────┘        └───────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
+# E-Commerce Data Platform
+
+```mermaid
+flowchart LR
+
+    subgraph INGESTION["Data Ingestion"]
+        DG["Data Generator<br/>(Python / Faker)"]
+        KB["Kafka Broker<br/>(4 Topics)"]
+        SS["Spark Structured Streaming"]
+
+        DG --> KB
+        KB --> SS
+    end
+
+    subgraph DATALAKE["MinIO Data Lake"]
+        BR["Bronze Layer"]
+        SI["Silver Layer"]
+        GO["Gold Layer"]
+    end
+
+    SS --> BR
+    BR --> SI
+    SI --> GO
+
+    subgraph PROCESSING["Batch Processing & Orchestration"]
+        AF["Apache Airflow<br/>(Orchestrator)"]
+        SB["Spark Batch<br/>(PySpark Jobs)"]
+
+        AF --> SB
+    end
+
+    GO --> SB
+
+    subgraph WAREHOUSE["PostgreSQL Data Warehouse"]
+        DWH["Star Schema"]
+    end
+
+    SB --> DWH
+
+    subgraph DBT["dbt Transformations"]
+        ST["staging/"]
+        MA["marts/"]
+
+        ST --> MA
+    end
+
+    DWH --> ST
+
+    subgraph CONSUMPTION["Consumption Layer"]
+        API["FastAPI REST API<br/>/api/v1/..."]
+        DASH["Streamlit Dashboard<br/>(Charts & KPIs)"]
+    end
+
+    MA --> API
+    MA --> DASH
+```
 ```
 
 ## Tech Stack
